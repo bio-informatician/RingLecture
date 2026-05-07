@@ -1,0 +1,121 @@
+https://docs.google.com/presentation/d/1aK3P5xchdmBhjUcIgLSN77mUcpPRAo0I/edit?slide=id.p4#slide=id.p4
+# ssh
+dessert
+# pull from docker hub
+docker pull mysql:oraclelinux9
+# run the server instance
+docker run --name mock-mysql -e MYSQL_ROOT_PASSWORD=mypass -d mysql:oraclelinux9
+# create a network
+docker network create mock-network
+# add server to the network
+docker network connect mock-network mock-mysql
+# connect to the server from another instance
+docker run -it --network mock-network --rm mysql mysql -h mock-mysql -u root -p
+# or access the bash 
+docker exec -it mock-mysql bash
+# then access mysql
+mysql -u root -p
+# create a database
+create database testdb; use testdb;
+# create tables
+-- =========================
+-- COURSE TABLE
+-- =========================
+CREATE TABLE course (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10,2) NOT NULL
+);
+
+-- =========================
+-- STUDENT TABLE
+-- =========================
+CREATE TABLE student (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email_address VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL
+);
+
+-- =========================
+-- ENROLMENT TABLE
+-- =========================
+CREATE TABLE enrolment (
+    course_id INT NOT NULL,
+    student_id INT NOT NULL,
+    enrolment_datetime DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (course_id, student_id),
+
+    CONSTRAINT fk_enrolment_course
+        FOREIGN KEY (course_id)
+        REFERENCES course(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_enrolment_student
+        FOREIGN KEY (student_id)
+        REFERENCES student(id)
+        ON DELETE CASCADE
+);
+
+-- =========================
+-- INSERT COURSES
+-- =========================
+INSERT INTO course (name, description, price)
+VALUES
+('MySQL Basics', 'Introduction to MySQL databases', 49.99),
+('Web Development', 'HTML, CSS, JavaScript fundamentals', 99.99),
+('Python Programming', 'Learn Python from scratch', 79.99);
+
+-- =========================
+-- INSERT STUDENTS
+-- =========================
+INSERT INTO student (email_address, password)
+VALUES
+('alice@example.com', 'alicepass'),
+('bob@example.com', 'bobpass'),
+('charlie@example.com', 'charliepass');
+
+-- =========================
+-- INSERT ENROLMENTS
+-- =========================
+INSERT INTO enrolment (course_id, student_id)
+VALUES
+(1, 1),
+(1, 2),
+(2, 1),
+(3, 3);
+
+-- =========================
+-- JOINT QUERY
+-- =========================
+SELECT
+    s.email_address,
+    c.name AS course_name,
+    e.enrolment_datetime
+FROM enrolment e
+JOIN student s
+    ON e.student_id = s.id
+JOIN course c
+    ON e.course_id = c.id;
+
+
+docker exec -i mock-mysql mysql -u root -p -e " 
+USE testdb;
+SELECT
+    s.email_address,
+    c.name AS course_name,
+    e.enrolment_datetime
+FROM enrolment e
+JOIN student s ON e.student_id = s.id
+JOIN course c ON e.course_id = c.id;
+"
+
+-- =========================
+-- DELETE MYSQL FROM DOCKER
+-- =========================
+docker rm -f $(docker ps -aq --filter ancestor=mysql)
+docker rm -f mock-mysql
+docker volume prune -f
+docker network rm mock-network
+docker rmi mysql:oraclelinux9 mysql:latest
